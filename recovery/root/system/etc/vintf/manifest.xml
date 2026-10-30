@@ -1,0 +1,116 @@
+<!--
+    Input:
+        system/libhidl/vintfdata/manifest.xml
+        device/xiaomi/missi/framework_manifest.xml
+-->
+<manifest version="4.0" type="framework">
+    <hal format="hidl" max-level="6">
+        <name>android.frameworks.displayservice</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::IDisplayService/default</fqname>
+    </hal>
+    <hal format="hidl" max-level="5">
+        <name>android.frameworks.schedulerservice</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::ISchedulingPolicyService/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.frameworks.sensorservice</name>
+        <fqname>ISensorManager/default</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>android.frameworks.sensorservice</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::ISensorManager/default</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>android.hidl.manager</name>
+        <transport>hwbinder</transport>
+        <version>1.2</version>
+        <interface>
+            <name>IServiceManager</name>
+            <instance>default</instance>
+        </interface>
+        <fqname>@1.2::IServiceManager/default</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>android.hidl.memory</name>
+        <transport arch="32+64">passthrough</transport>
+        <fqname>@1.0::IMapper/ashmem</fqname>
+    </hal>
+    <hal format="hidl" max-level="7">
+        <name>android.system.net.netd</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.1::INetd/default</fqname>
+    </hal>
+    <hal format="hidl" max-level="7">
+        <name>android.system.wifi.keystore</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::IKeystore/default</fqname>
+    </hal>
+    <hal format="native">
+        <name>netutils-wrapper</name>
+        <version>1.0</version>
+    </hal>
+    <hal format="hidl">
+        <name>vendor.qti.hardware.qccsyshal</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.2::IQccsyshal/qccsyshal</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>vendor.qti.hardware.radio.atcmdfwd</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::IAtCmdFwd/AtCmdFwdService</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>vendor.qti.hardware.systemhelper</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::ISystemEvent/default</fqname>
+        <fqname>@1.0::ISystemResource/default</fqname>
+    </hal>
+    <system-sdk>
+        <version>29</version>
+        <version>30</version>
+        <version>31</version>
+        <version>32</version>
+        <version>33</version>
+        <version>34</version>
+    </system-sdk>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>2</version>
+        <fqname>IKeyMintDevice/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>2</version>
+        <fqname>IRemotelyProvisionedComponent/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.secureclock</name>
+        <fqname>ISecureClock/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.sharedsecret</name>
+        <fqname>ISharedSecret/default</fqname>
+    </hal>
+    <!--
+        这里故意不声明 android.hardware.gatekeeper 的 AIDL 形式。
+
+        fuxi 只提供 HIDL gatekeeper (gatekeeper-1-0，见 vendor manifest)，
+        而 framework manifest 默认带 AIDL 声明，导致 system/vold/Decrypt.cpp 里
+            AServiceManager_isDeclared("android.hardware.gatekeeper.IGatekeeper/default")
+        返回 true，于是先在 AIDL 名字上空等 30 秒（300 x 100ms）才回退到 HIDL。
+        Gatekeeper_Verify() 与 Decrypt_User() 各等一次，合计约 60 秒。
+
+        删掉本声明后 isDeclared() 返回 false，代码直接走 HIDL，解密瞬间完成
+        （实测 Decrypted 日志行 737 -> 679，timed out 计数 1 -> 0）。
+
+        recovery 走的是 VintfObjectRecovery 分支，只读 /system/etc/vintf/manifest.xml，
+        所以改这里即可生效，不需要动 vendor manifest。
+
+        不要恢复此声明，否则解密会重新多等约 60 秒。
+        若日后固件真的提供了 AIDL gatekeeper 服务，
+        应同时移除 system/vold 侧的 HIDL 回退逻辑后再恢复。
+    -->
+</manifest>
